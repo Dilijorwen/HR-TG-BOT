@@ -11,7 +11,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # 2. копируем код бота
 COPY bot/ ./bot
-COPY scripts/ ./scripts
+COPY bot/scripts/ ./scripts
 
 # 3. команда запуска
 CMD ["python", "-m", "uvicorn", "bot.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -15,7 +15,7 @@ meta:
 
 steps:
   - id: ask_name
-    internal: "Как к вам обращаться?"
+    internal: "Как можно к вам обращаться?"
     field: full_name
     validate: ".{2,}"
     tone: friendly
