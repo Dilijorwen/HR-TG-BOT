@@ -1,19 +1,34 @@
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
+from aiogram.filters import CommandStart
+from aiogram.filters.command import CommandObject
 from aiogram.types import Message, Contact
 from asyncpg import Pool
-from states import RecruitFlow
-from keyboards import ask_phone_kb, remove_kb
+from .states import RecruitFlow
+from .keyboards import ask_phone_kb, remove_kb
 
 router = Router()
 
 def register_handlers(dp, db: Pool):
     # Подвязываем DB-пул через замыкание
-    @router.message(F.text.startswith("/start"))
-    async def cmd_start(msg: Message, state: FSMContext):
-        vacancy = msg.text.split(maxsplit=1)[1] if len(msg.text.split()) > 1 else "UNSPEC"
-        await state.update_data(vacancy=vacancy)
-        await msg.answer("Привет! 👋\nКак Вас зовут?")
+    @router.message(CommandStart())  # фильтр остаётся
+    async def cmd_start(
+            message: Message,
+            command: CommandObject,  # ← объект с разбором /start
+            state: FSMContext
+    ):
+        vacancy_code = command.args  # всё, что после /start
+
+        if not vacancy_code:  # deep-link пустой
+            await message.answer(
+                "⚠️ Я работаю только по персональной ссылке.\n"
+                "Похоже, вы запустили меня напрямую. "
+                "Попросите HR прислать правильную ссылку."
+            )
+            return
+
+        await state.update_data(vacancy=vacancy_code)
+        await message.answer("Привет! 👋\nКак Вас зовут?")
         await state.set_state(RecruitFlow.full_name)
 
     @router.message(RecruitFlow.full_name)

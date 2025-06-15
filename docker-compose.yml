@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: hr
+      POSTGRES_PASSWORD: hrpass
+      POSTGRES_DB: hrdb
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./db/01_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    ports:
+      - "5432:5432"
+
+  bot:
+    build: .
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+volumes:
+  dbdata:
