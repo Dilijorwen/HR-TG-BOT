@@ -1,6 +1,8 @@
 services:
   bot:
-    build: bot
+    build:
+      context: .                # корень репо
+      dockerfile: Dockerfile
     env_file: .env
     depends_on: [db, redis, llm]
     restart: unless-stopped
@@ -34,23 +36,26 @@ services:
     image: alpine:3.20
     depends_on: [db]
     volumes:
-      - ./backups:/backups
+      - ./tech/backups:/backups
+      - ./tech/backup.sh:/backup.sh:ro
     env_file: .env
     command: >
-      sh -c "echo '0 3 * * * /backup.sh' | crontab - && sleep infinity"
+      sh -c "chmod +x /backup.sh &&
+             echo '0 3 * * * /backup.sh' | crontab - &&
+             tail -f /dev/null"
     entrypoint: /bin/sh
-    working_dir: /        # /backups будет смонтирован
+    working_dir: /tech        # /backups будет смонтирован
     volumes_from:
       - db
     # /backup.sh монтируем через config/volume
     configs:
       - source: backup_script
-        target: /backup.sh
+        target: /tech/backup.sh
         mode: 0555
 
 configs:
   backup_script:
-    file: ./backup.sh
+    file: tech/backup.sh
 
 volumes:
   db_data:
