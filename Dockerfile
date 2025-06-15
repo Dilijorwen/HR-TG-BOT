@@ -11,7 +11,6 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # 2. копируем код бота
 COPY bot/ ./bot
-COPY utils.py ./utils.py
 COPY scripts/ ./scripts
 
 # 3. команда запуска
