@@ -1,0 +1,49 @@
+meta:
+  vacancy_id: kalina_seller
+  title: "Продавец-консультант (Калина Молл)"
+  salary: "70 000–80 000 ₽"
+  schedule: "3/3 или 2/2, 12-ч смены"
+  location: "г. Владивосток, ул. Калинина 8"
+
+steps:
+  - id: greeting
+    internal: >
+      Добрый день! Мы нашли ваше резюме и
+      хотели бы обсудить позицию продавца-консультанта
+      в магазине «Туманы» (Калина Молл).
+      Актуален ли для вас поиск работы?
+    expect: yes_no
+    tone: friendly
+
+  - id: ask_name
+    internal: "Как к вам обращаться?"
+    field: full_name
+    validate: ".{2,}"
+    tone: friendly
+
+  - id: ask_experience
+    internal: >
+      Опыт продаж не обязателен, но
+      расскажите, сталкивались ли вы с розницей?
+    field: experience
+    tone: friendly
+
+  - id: ask_schedule
+    internal: "Какой график вам комфортнее — 3/3 или 2/2?"
+    field: schedule_pref
+    validate: "(3/3|2/2)"
+    tone: friendly
+
+  - id: ask_questions
+    internal: >
+      С удовольствием отвечу на любые вопросы
+      по зарплате, обязанностям или команде —
+      что хотелось бы уточнить?
+    expect: free_text
+    tone: friendly
+
+  - id: finish
+    internal: >
+      Спасибо! Передаю ваши данные менеджеру —
+      он свяжется в течение суток.
+    tone: friendly

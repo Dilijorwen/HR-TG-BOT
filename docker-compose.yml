@@ -1,0 +1,57 @@
+services:
+  bot:
+    build: bot
+    env_file: .env
+    depends_on: [db, redis, llm]
+    restart: unless-stopped
+    ports:
+      - "8000:8000"           # FastAPI webhook (если нужно)
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: hrbot
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: hrbot
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    volumes:
+      - redis_data:/data
+
+  llm:
+    image: ollama/ollama:latest
+    volumes:
+      - ./models:/root/.ollama
+    environment:
+      - OLLAMA_MODELS=/root/.ollama
+    ports:
+      - "11434:11434"
+
+  backup:
+    image: alpine:3.20
+    depends_on: [db]
+    volumes:
+      - ./backups:/backups
+    env_file: .env
+    command: >
+      sh -c "echo '0 3 * * * /backup.sh' | crontab - && sleep infinity"
+    entrypoint: /bin/sh
+    working_dir: /        # /backups будет смонтирован
+    volumes_from:
+      - db
+    # /backup.sh монтируем через config/volume
+    configs:
+      - source: backup_script
+        target: /backup.sh
+        mode: 0555
+
+configs:
+  backup_script:
+    file: ./backup.sh
+
+volumes:
+  db_data:
+  redis_data:
