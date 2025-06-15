@@ -245,3 +245,4 @@ backups/
 *.gguf
 *.sql.gz
 .git
+.venv/
