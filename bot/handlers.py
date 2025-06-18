@@ -9,7 +9,6 @@ from asyncpg import Pool
 from .states import RecruitFlow
 from .keyboards import ask_phone_kb         # оставить из вашего файла
 
-# ---------- грузим YAML один раз при импорте ----------
 SCENARIOS = yaml.safe_load(
     pathlib.Path(__file__).with_name("scenarios.yml").read_text(encoding="utf-8")
 )
@@ -17,7 +16,6 @@ SCENARIOS = yaml.safe_load(
 def register_handlers(dp, db_pool: Pool):
     router = Router()
 
-    # ---------- /start <vacancy_code> ----------
     @router.message(CommandStart())
     async def cmd_start(message: Message, command: CommandObject, state: FSMContext):
         vacancy_code = command.args
@@ -30,12 +28,6 @@ def register_handlers(dp, db_pool: Pool):
             )
             return
 
-        await state.update_data(vacancy=vacancy_code,
-                                q_index=0,
-                                answers={})
-        await ask_next(message, state, script)
-
-    # ---------- задаём очередной вопрос ----------
     async def ask_next(message: Message, state: FSMContext, script: dict):
         data       = await state.get_data()
         q_index    = data["q_index"]
@@ -50,7 +42,6 @@ def register_handlers(dp, db_pool: Pool):
         await message.answer(q["text"], reply_markup=kb)
         await state.set_state(RecruitFlow.asking)
 
-    # ---------- принимаем ответ ----------
     @router.message(RecruitFlow.asking)
     async def collect(message: Message, state: FSMContext):
         data      = await state.get_data()
@@ -69,7 +60,6 @@ def register_handlers(dp, db_pool: Pool):
         await state.update_data(q_index=q_index + 1, answers=answers)
         await ask_next(message, state, script)
 
-    # ---------- финал ----------
     async def save_and_finish(message: Message, state: FSMContext, script: dict):
         data = await state.get_data()
         await db_pool.execute(
