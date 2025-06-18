@@ -1,4 +1,7 @@
-import json, pathlib, yaml
+import json
+import pathlib
+import yaml
+from datetime import datetime
 from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.filters.command import CommandObject
@@ -7,13 +10,14 @@ from aiogram.types import Message, Contact, ReplyKeyboardRemove
 from asyncpg import Pool
 
 from .states import RecruitFlow
-from .keyboards import ask_phone_kb # оставить из вашего файла
+from .keyboards import ask_phone_kb, remove_kb
+
 
 SCENARIOS = yaml.safe_load(
     pathlib.Path(__file__).with_name("scenarios.yml").read_text(encoding="utf-8")
 )
 
-def register_handlers(dp, db_pool: Pool):
+def register_handlers(dp, db_pool: Pool) -> None:
     router = Router()
 
     @router.message(CommandStart())
@@ -21,48 +25,86 @@ def register_handlers(dp, db_pool: Pool):
         vacancy_code = command.args
         script = SCENARIOS.get(vacancy_code)
 
-        if not script:
+        if not vacancy_code or not script:
             await message.answer(
-                "⚠️ Cсылка выглядит некорректной. "
-                "Попросите HR прислать актуальный линк."
+                "⚠️ Я работаю только по персональной ссылке.\n"
+                "Похоже, вы запустили меня напрямую или код вакансии некорректен.\n"
+                "Попросите HR прислать правильную ссылку."
             )
             return
 
-    async def ask_next(message: Message, state: FSMContext, script: dict):
+        await message.answer(f"""👋 Привет!
+
+Я чат-бот HR-команды. Помогу пройти короткую анкету по вакансии «{vacancy_code}».
+
+Ответы займут 2–3 минуты и сразу попадут к рекрутеру.  
+Начнём!"""
+                                 )
+
+        # 1) Показываем описание вакансии
+        await message.answer(script["intro"], parse_mode="Markdown")
+
+        # 2) Сохраняем начальные данные FSM
+        await state.update_data(
+            vacancy=vacancy_code,
+            answers={},
+            q_index=0,
+            started_at=datetime.utcnow().isoformat(),
+        )
+
+        # 3) Переходим к первому вопросу
+        await ask_next_question(message, state, script)
+
+    async def ask_next_question(
+        message: Message,
+        state: FSMContext,
+        script: dict,
+    ) -> None:
         data = await state.get_data()
-        q_index = data["q_index"]
+        idx = data["q_index"]
         questions = script["questions"]
 
-        if q_index >= len(questions):              # всё собрано
-            await save_and_finish(message, state, script)
+        # Все вопросы заданы ➜ сохраняем кандидата и завершаем
+        if idx >= len(questions):
+            await save_candidate_to_db(message, state, db_pool)
             return
 
-        q = questions[q_index]
-        kb = ask_phone_kb if q.get("keyboard") == "ask_phone" else ReplyKeyboardRemove()
+        q = questions[idx]
+        kb = ask_phone_kb if q.get("keyboard") == "ask_phone" else remove_kb
+
         await message.answer(q["text"], reply_markup=kb)
         await state.set_state(RecruitFlow.asking)
 
     @router.message(RecruitFlow.asking)
-    async def collect(message: Message, state: FSMContext):
+    async def collect_answer(message: Message, state: FSMContext) -> None:
         data = await state.get_data()
         vacancy = data["vacancy"]
         script = SCENARIOS[vacancy]
-        q_index = data["q_index"]
+        idx = data["q_index"]
         questions = script["questions"]
 
-        # сохраняем
-        answers = data["answers"]
-        answers[questions[q_index]["id"]] = (
-            message.contact.phone_number if isinstance(message.contact, Contact) else message.text.strip()
+        # Извлекаем текст/контакт
+        answer_text = (
+            message.contact.phone_number
+            if isinstance(message.contact, Contact)
+            else message.text.strip()
         )
 
-        # готовимся к следующему
-        await state.update_data(q_index=q_index + 1, answers=answers)
-        await ask_next(message, state, script)
+        answers = data["answers"]
+        answers[questions[idx]["id"]] = answer_text
 
-    async def save_and_finish(message: Message, state: FSMContext, script: dict):
+        # Обновляем FSM и спрашиваем следующий
+        await state.update_data(q_index=idx + 1, answers=answers)
+        await ask_next_question(message, state, script)
+
+    async def save_candidate_to_db(
+        message: Message,
+        state: FSMContext,
+        pool: Pool,
+    ) -> None:
         data = await state.get_data()
-        await db_pool.execute(
+
+        await pool.execute(
             """
             INSERT INTO candidates (tg_id, vacancy, answers)
             VALUES ($1, $2, $3::jsonb)
@@ -71,7 +113,12 @@ def register_handlers(dp, db_pool: Pool):
             data["vacancy"],
             json.dumps(data["answers"]),
         )
-        await message.answer("Спасибо! 🎉 Анкета передана рекрутеру.")
+
+        await message.answer(
+            "Спасибо! 🎉 Анкета передана рекрутеру.\n"
+            "Мы свяжемся с вами, как только изучим ответы.",
+            reply_markup=ReplyKeyboardRemove()
+        )
         await state.clear()
 
     dp.include_router(router)
