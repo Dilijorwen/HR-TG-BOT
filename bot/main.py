@@ -6,8 +6,8 @@ from .handlers import register_handlers
 
 async def main():
     bot = Bot(settings.tg_token)
-    dp  = Dispatcher()
-    db  = await asyncpg.create_pool(dsn=settings.db_dsn)
+    dp = Dispatcher()
+    db = await asyncpg.create_pool(dsn=settings.db_dsn)
 
     register_handlers(dp, db)
 

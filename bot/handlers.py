@@ -7,7 +7,7 @@ from aiogram.types import Message, Contact, ReplyKeyboardRemove
 from asyncpg import Pool
 
 from .states import RecruitFlow
-from .keyboards import ask_phone_kb         # оставить из вашего файла
+from .keyboards import ask_phone_kb # оставить из вашего файла
 
 SCENARIOS = yaml.safe_load(
     pathlib.Path(__file__).with_name("scenarios.yml").read_text(encoding="utf-8")
@@ -29,9 +29,9 @@ def register_handlers(dp, db_pool: Pool):
             return
 
     async def ask_next(message: Message, state: FSMContext, script: dict):
-        data       = await state.get_data()
-        q_index    = data["q_index"]
-        questions  = script["questions"]
+        data = await state.get_data()
+        q_index = data["q_index"]
+        questions = script["questions"]
 
         if q_index >= len(questions):              # всё собрано
             await save_and_finish(message, state, script)
@@ -44,10 +44,10 @@ def register_handlers(dp, db_pool: Pool):
 
     @router.message(RecruitFlow.asking)
     async def collect(message: Message, state: FSMContext):
-        data      = await state.get_data()
-        vacancy   = data["vacancy"]
-        script    = SCENARIOS[vacancy]
-        q_index   = data["q_index"]
+        data = await state.get_data()
+        vacancy = data["vacancy"]
+        script = SCENARIOS[vacancy]
+        q_index = data["q_index"]
         questions = script["questions"]
 
         # сохраняем
