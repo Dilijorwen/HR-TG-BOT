@@ -1,0 +1,20 @@
+QA_Engineer:
+  title: Инженер-тестировщик
+  questions:
+    - id: full_name
+      text: "Как Вас зовут?"
+    - id: phone
+      text: "Отправьте, пожалуйста, номер телефона"
+      keyboard: "ask_phone"
+    - id: experience_years
+      text: "Сколько лет опыта в QA?"
+Driver_NightShift:
+  title: Водитель (ночная смена)
+  questions:
+    - id: full_name
+      text: "Как Вас зовут?"
+    - id: phone
+      text: "Телефон для связи?"
+      keyboard: "ask_phone"
+    - id: license
+      text: "Есть ли права категории B? (да/нет)"
